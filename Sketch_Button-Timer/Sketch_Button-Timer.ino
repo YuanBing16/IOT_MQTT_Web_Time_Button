@@ -1,103 +1,56 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 
-// Ganti sesuai jaringanmu
 const char* ssid = "SMUHERO.LAB";
 const char* password = "Smuhero@LAB";
-
-// MQTT Broker
-const char* mqtt_server = "broker.hivemq.com";
-const int mqtt_port = 1883;
-
-// Pin relay (untuk kontrol lampu)
-const int relay1 = D1;  // GPIO5
-const int relay2 = D2;  // GPIO4
-const int relay3 = D3;  // GPIO0
-const int relay4 = D6;  // GPIO12
+const char* mqtt_server = "broker.hivemq.com";  // Gunakan broker MQTT yang diinginkan
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-// Fungsi menerima pesan dari topik MQTT
-void callback(char* topic, byte* payload, unsigned int length) {
-  String pesan;
-  for (int i = 0; i < length; i++) {
-    pesan += (char)payload[i];
+const int relayPin = D1;  // Pin untuk relay (misalnya mengendalikan lampu)
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, LOW);  // Pastikan relay mati di awal
+
+  // Menghubungkan ke WiFi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
   }
+  Serial.println("Connected to WiFi");
 
-  Serial.print("Pesan diterima: ");
-  Serial.print(topic);
-  Serial.print(" = ");
-  Serial.println(pesan);
+  // Menghubungkan ke Broker MQTT
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
 
-  // Kontrol relay berdasarkan topik yang diterima
-  if (String(topic) == "coba/lampu1") {
-    digitalWrite(relay1, pesan == "1" ? LOW : HIGH);  // ON jika "1", OFF jika "0"
-  } else if (String(topic) == "coba/lampu2") {
-    digitalWrite(relay2, pesan == "1" ? LOW : HIGH);
-  } else if (String(topic) == "coba/lampu3") {
-    digitalWrite(relay3, pesan == "1" ? LOW : HIGH);
-  } else if (String(topic) == "coba/lampu4") {
-    digitalWrite(relay4, pesan == "1" ? LOW : HIGH);
-  }
-}
-
-// Fungsi untuk memastikan koneksi dengan broker MQTT
-void reconnect() {
   while (!client.connected()) {
-    Serial.print("Menghubungkan ke MQTT...");
-    String clientId = "ESP_" + String(random(0xffff), HEX);  // Client ID unik
-    if (client.connect(clientId.c_str())) {
-      Serial.println("Terhubung ke MQTT!");
-
-      // Subscribe ke semua topik untuk mengontrol lampu
-      client.subscribe("coba/lampu1");
-      client.subscribe("coba/lampu2");
-      client.subscribe("coba/lampu3");
-      client.subscribe("coba/lampu4");
+    if (client.connect("ESP8266Client")) {
+      Serial.println("Connected to MQTT Broker");
+      client.subscribe("device/control");  // Subscribes to topic 'device/control'
     } else {
-      Serial.print("Gagal terhubung, rc=");
-      Serial.print(client.state());
-      Serial.println(" mencoba lagi dalam 5 detik.");
-      delay(5000);
+      delay(1000);
+      Serial.println("Failed to connect to MQTT Broker. Retrying...");
     }
   }
 }
 
-void setup() {
-  Serial.begin(115200);
-
-  // Atur pin relay sebagai output
-  pinMode(relay1, OUTPUT);
-  pinMode(relay2, OUTPUT);
-  pinMode(relay3, OUTPUT);
-  pinMode(relay4, OUTPUT);
-
-  // Matikan semua relay (aktif dengan HIGH)
-  digitalWrite(relay1, HIGH);
-  digitalWrite(relay2, HIGH);
-  digitalWrite(relay3, HIGH);
-  digitalWrite(relay4, HIGH);
-
-  // Koneksi ke Wi-Fi
-  WiFi.begin(ssid, password);
-  Serial.print("Menghubungkan ke Wi-Fi");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+void callback(char* topic, byte* message, unsigned int length) {
+  String msg = "";
+  for (int i = 0; i < length; i++) {
+    msg += (char)message[i];
   }
-  Serial.println("\nWi-Fi terhubung");
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
 
-  // Setup MQTT client
-  client.setServer(mqtt_server, mqtt_port);
-  client.setCallback(callback);
+  if (msg == "ON") {
+    digitalWrite(relayPin, HIGH);
+  } else if (msg == "OFF") {
+    digitalWrite(relayPin, LOW);
+  }
 }
 
 void loop() {
-  if (!client.connected()) {
-    reconnect();  // Cek koneksi ke MQTT, coba lagi jika gagal
-  }
-  client.loop();  // Proses pesan masuk
+  client.loop();
 }
