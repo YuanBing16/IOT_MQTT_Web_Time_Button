@@ -257,7 +257,7 @@
         <label for="global-off-time">Mati :</label>
         <input type="time" id="global-off-time">
       </div>
-      <button class="toggle-btn" onclick="simpanJadwal()">Simpan Jadwal</button>
+      <button class="toggle-btn on" onclick="simpanJadwal()">Simpan Jadwal</button>
     </div>
 
     <div class="current-schedule">
@@ -344,7 +344,7 @@
         name.textContent = device.name;
 
         const btn = document.createElement('button');
-        btn.className = `toggle-btn ${device.state ? 'on' : 'off'}`;
+        btn.className = `toggle-btn ${device.state ? 'off' : 'on'}`;
         btn.textContent = device.state ? 'Matikan' : 'Nyalakan';
         btn.onclick = () => toggleDevice(index, !device.state);
 
