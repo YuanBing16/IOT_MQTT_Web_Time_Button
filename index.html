@@ -318,7 +318,7 @@
 
       // Topik untuk menyebarkan jadwal global
       const scheduleTopic = "coba/jadwal/global";
-      
+
       const grid = document.getElementById("deviceGrid");
       const logEl = document.getElementById("log");
       const currentOnTime = document.getElementById("current-on-time");
@@ -362,7 +362,10 @@
           const btn = document.createElement("button");
           btn.className = `toggle-btn ${device.state ? "off" : "on"}`;
           btn.textContent = device.state ? "Matikan" : "Nyalakan";
-          btn.onclick = () => toggleDevice(index, !device.state, true);
+          btn.onclick = () => {
+            const newState = !device.state;
+            toggleDevice(index, newState, true);
+          };
 
           card.appendChild(name);
           card.appendChild(btn);
@@ -374,13 +377,12 @@
       let overrideTimeout = null;
 
       function toggleDevice(index, stae, isManual = false) {
-
         if (isManual) {
           manualOverride = true;
           updateControlMode();
 
           if (overrideTimeout) clearTimeout(overrideTimeout);
-          
+
           overrideTimeout = setTimeout(() => {
             manualOverride = false;
             updateControlMode();
@@ -389,10 +391,13 @@
         }
 
         const device = devices[index];
+        const newState = state !== undefined ? state : !device.state;
         client.publish(device.topicCtrl, state ? "1" : "0", { retain: true });
 
         if (isManual) {
-          addLogEntry('🖐️ ${device.name} ${state ? "dinyalakan" : "dimatikan"} secara manual');
+          addLogEntry(
+            '🖐️ ${device.name} ${state ? "dinyalakan" : "dimatikan"} secara manual'
+          );
         }
         // Tidak langsung set state atau render, biarkan pesan MQTT yang mengatur
       }
@@ -402,7 +407,7 @@
         if (manualOverride) {
           modeElement.textContent = "Manual";
           modeElement.style.color = "var(--off-state)";
-        }else {
+        } else {
           modeElement.textContent = "Otomatis";
           modeElement.style.color = "var(--on-state)";
         }
@@ -431,13 +436,15 @@
 
         jadwalGlobal = { on: onTime, off: offTime };
         updateScheduleDisplay();
-        
+
         // Simpan jadwal ke localStorage
-        localStorage.setItem('jadwalGlobal', JSON.stringify(jadwalGlobal));
-        
+        localStorage.setItem("jadwalGlobal", JSON.stringify(jadwalGlobal));
+
         // Kirim jadwal ke broker MQTT (dengan retain agar klien baru langsung mendapatkannya)
-        client.publish(scheduleTopic, JSON.stringify(jadwalGlobal), { retain: true });
-        
+        client.publish(scheduleTopic, JSON.stringify(jadwalGlobal), {
+          retain: true,
+        });
+
         addLogEntry(`✅ Jadwal disimpan: Hidup ${onTime}, Mati ${offTime}`);
       }
 
@@ -449,11 +456,13 @@
         devices.forEach((device) => {
           client.subscribe(device.topicCtrl);
         });
-        
+
         // Subscribe ke topik jadwal global
         client.subscribe(scheduleTopic);
-        addLogEntry(`🔔 Mendengarkan pembaruan jadwal di topik: ${scheduleTopic}`);
-        
+        addLogEntry(
+          `🔔 Mendengarkan pembaruan jadwal di topik: ${scheduleTopic}`
+        );
+
         // Minta jadwal terbaru (jika ada) dengan mengirim pesan kosong
         client.publish(scheduleTopic + "/get", "");
       });
@@ -464,9 +473,9 @@
 
       client.on("message", (topic, message) => {
         const payload = message.toString();
-        
+
         // Handle pesan untuk perangkat
-        if (devices.some(d => d.topicCtrl === topic)) {
+        if (devices.some((d) => d.topicCtrl === topic)) {
           const index = devices.findIndex((d) => d.topicCtrl === topic);
           if (index !== -1) {
             const newState = payload === "1";
@@ -481,22 +490,26 @@
             }
           }
         }
-        
+
         // Handle pesan untuk jadwal global
         if (topic === scheduleTopic) {
           try {
             const newSchedule = JSON.parse(payload);
             if (newSchedule.on && newSchedule.off) {
               jadwalGlobal = newSchedule;
-              
+
               // Update UI
               document.getElementById("global-on-time").value = jadwalGlobal.on;
-              document.getElementById("global-off-time").value = jadwalGlobal.off;
+              document.getElementById("global-off-time").value =
+                jadwalGlobal.off;
               updateScheduleDisplay();
-              
+
               // Simpan ke localStorage
-              localStorage.setItem('jadwalGlobal', JSON.stringify(jadwalGlobal));
-              
+              localStorage.setItem(
+                "jadwalGlobal",
+                JSON.stringify(jadwalGlobal)
+              );
+
               addLogEntry("📅 Jadwal global diperbarui dari broker");
             }
           } catch (e) {
@@ -506,8 +519,8 @@
       });
 
       // Cek jadwal di localStorage saat pertama kali load
-      window.addEventListener('load', function() {
-        const savedSchedule = localStorage.getItem('jadwalGlobal');
+      window.addEventListener("load", function () {
+        const savedSchedule = localStorage.getItem("jadwalGlobal");
         if (savedSchedule) {
           try {
             jadwalGlobal = JSON.parse(savedSchedule);
