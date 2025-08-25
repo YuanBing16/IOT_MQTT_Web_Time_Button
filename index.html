@@ -305,8 +305,6 @@
         reconnectPeriod: 5000,
       });
 
-      const topicJadwal = "coba/jadwal-global";
-
       const devices = [
         { topicCtrl: "coba/lampu1", name: "Lampu 1", state: false },
         { topicCtrl: "coba/lampu2", name: "Lampu 2", state: false },
@@ -393,8 +391,7 @@
         }
 
         jadwalGlobal = { on: onTime, off: offTime };
-        client.publish(topicJadwal, JSON.stringify(jadwal), { retain: true });
-        // updateScheduleDisplay();
+        updateScheduleDisplay();
         addLogEntry(`✅ Jadwal disimpan: Hidup ${onTime}, Mati ${offTime}`);
       }
 
@@ -403,14 +400,9 @@
         addLogEntry("✅ Terhubung ke broker MQTT");
 
         // Subscribe semua topik kontrol lampu
-        // devices.forEach((device) => {
-        //   client.subscribe(device.topicCtrl);
-        // });
         devices.forEach((device) => {
           client.subscribe(device.topicCtrl);
         });
-
-        client.subscribe(topicJadwal);
       });
 
       client.on("error", (err) => {
@@ -419,21 +411,6 @@
 
       client.on("message", (topic, message) => {
         const payload = message.toString();
-
-        if (topic === topicJadwal) {
-          try {
-            const jadwal = JSON.parse(payload);
-            jadwalGlobal = jadwal;
-            updateScheduleDisplay();
-            addLogEntry(
-              `🕒 Jadwal diperbarui: ON ${jadwal.on}, OFF ${jadwal.off}`
-            );
-          } catch (e) {
-            addLogEntry("❌ Gagal memuat jadwal");
-          }
-          return;
-        }
-
         const index = devices.findIndex((d) => d.topicCtrl === topic);
         if (index !== -1) {
           const newState = payload === "1";
