@@ -318,7 +318,6 @@
       const currentOffTime = document.getElementById("current-off-time");
       const scheduleStatus = document.getElementById("schedule-status");
       let jadwalGlobal = { on: null, off: null };
-      // let sudahResetHariIni = false;
 
       function addLogEntry(msg) {
         const entry = document.createElement("div");
@@ -388,9 +387,7 @@
       function toggleDevice(index, state) {
         const device = devices[index];
         client.publish(device.topicCtrl, state ? "1" : "0", { retain: true });
-        // device.state = state;
-        // addLogEntry(`${device.name} ${state ? "Dinyalakan" : "Dimatikan"}`);
-        // renderDevices();
+        // Status akan diperbarui lewat callback MQTT, bukan langsung di sini
       }
 
       function updateScheduleDisplay() {
@@ -419,8 +416,10 @@
         addLogEntry(`✅ Jadwal disimpan: Hidup ${onTime}, Mati ${offTime}`);
       }
 
+      // === MQTT Connection Events ===
       client.on("connect", () => {
         addLogEntry("✅ Terhubung ke broker MQTT");
+        devices.forEach((d) => client.subscribe(d.topicCtrl)); // Subscribe semua topik kontrol
       });
 
       client.on("error", (err) => {
@@ -456,14 +455,11 @@
         if (jamMenit === jadwalGlobal.off) {
           devices.forEach((_, i) => toggleDevice(i, false));
           addLogEntry("⏰ Semua perangkat dimatikan sesuai jadwal");
-
-          // sudahResetHariIni = true;                              |
-          // addLogEntry('🔁 Website akan di-reset otomatis...');  ||  // untuk fitur reset otomatis
-          // setTimeout(() => location.reload(), 3000);             |
         }
       }, 1000);
 
-      // Inisialisasi
+      // === Inisialisasi ===
+      loadDeviceStatesFromLocalStorage();
       renderDevices();
       updateScheduleDisplay();
       addLogEntry("🔄 Sistem siap digunakan");
