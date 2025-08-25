@@ -280,6 +280,10 @@
           <div class="schedule-label">Status</div>
           <div class="schedule-time" id="schedule-status">Tidak aktif</div>
         </div>
+        <div class="schedule-item">
+          <div class="schedule-label">Mode</div>
+          <div class="schedule-time" id="control-mode">Otomatis</div>
+        </div>
       </div>
 
       <!-- Log -->
@@ -358,7 +362,7 @@
           const btn = document.createElement("button");
           btn.className = `toggle-btn ${device.state ? "off" : "on"}`;
           btn.textContent = device.state ? "Matikan" : "Nyalakan";
-          btn.onclick = () => toggleDevice(index, !device.state);
+          btn.onclick = () => toggleDevice(index, !device.state, true);
 
           card.appendChild(name);
           card.appendChild(btn);
@@ -366,10 +370,42 @@
         });
       }
 
-      function toggleDevice(index, state) {
+      let manualOverride = false;
+      let overrideTimeout = null;
+
+      function toggleDevice(index, stae, isManual = false) {
+
+        if (isManual) {
+          manualOverride = true;
+          updateControlMode();
+
+          if (overrideTimeout) clearTimeout(overrideTimeout);
+          
+          overrideTimeout = setTimeout(() => {
+            manualOverride = false;
+            updateControlMode();
+            addLogEntry("🔁 Kembali ke mode otomatis (jadwal)");
+          }, 5 * 60 * 1000);
+        }
+
         const device = devices[index];
         client.publish(device.topicCtrl, state ? "1" : "0", { retain: true });
+
+        if (isManual) {
+          addLogEntry('🖐️ ${device.name} ${state ? "dinyalakan" : "dimatikan"} secara manual');
+        }
         // Tidak langsung set state atau render, biarkan pesan MQTT yang mengatur
+      }
+
+      function updateControlMode() {
+        const modeElement = document.getElementById("control-mode");
+        if (manualOverride) {
+          modeElement.textContent = "Manual";
+          modeElement.style.color = "var(--off-state)";
+        }else {
+          modeElement.textContent = "Otomatis";
+          modeElement.style.color = "var(--on-state)";
+        }
       }
 
       function updateScheduleDisplay() {
@@ -486,7 +522,7 @@
       });
 
       setInterval(() => {
-        if (!jadwalGlobal.on || !jadwalGlobal.off) return;
+        if (!jadwalGlobal.on || !jadwalGlobal.off || manualOverride) return;
 
         const now = new Date();
         const jamMenit = now.toTimeString().substr(0, 5);
@@ -500,7 +536,7 @@
           devices.forEach((_, i) => toggleDevice(i, false));
           addLogEntry("⏰ Semua perangkat dimatikan sesuai jadwal");
         }
-      }, 60000);
+      }, 1000);
 
       // Inisialisasi
       renderDevices();
