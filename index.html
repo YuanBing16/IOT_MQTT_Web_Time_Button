@@ -357,7 +357,7 @@
 
     function toggleDevice(index, state) {
       const device = devices[index];
-      client.publish(device.topicCtrl, state ? '1' : '0');
+      client.publish(device.topicCtrl, state ? '1' : '0', { retain: true});
       device.state = state;
       addLogEntry(`${device.name} ${state ? 'Dinyalakan' : 'Dimatikan'}`);
       renderDevices();
