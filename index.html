@@ -355,32 +355,10 @@
       });
     }
 
-    // function saveDeviceStatesToLocalStorage() {
-    //   const stateArray = device.map(d => d.state);
-    //   localStorage.setItem('deviceStates', JSON.stringify(stateArray));
-    // }
-
-    // function loadDeviceStateFromLocalStorage() {
-    //   const saved = localStorage.getItem('deviceState');
-    //   if (saved) {
-    //     try {
-    //       const parsed = JSON.parse(saved);
-    //       if (Array.isArray(parsed)) {
-    //         parsed.forEach((val, i) => {
-    //           devices[i].state = !!val;
-    //         });
-    //       }
-    //     } catch (e) {
-    //       console.error("Gagal memuat deviceStates dari localStorage:", e);
-    //     }
-    //   }
-    // }
-
     function toggleDevice(index, state) {
       const device = devices[index];
       client.publish(device.topicCtrl, state ? '1' : '0', { retain: true});
       device.state = state;
-      // saveDeviceStatesToLocalStorage();
       addLogEntry(`${device.name} ${state ? 'Dinyalakan' : 'Dimatikan'}`);
       renderDevices();
     }
@@ -441,7 +419,6 @@
     }, 1000);
 
     // Inisialisasi
-    // loadDeviceStateFromLocalStorage();
     renderDevices();
     updateScheduleDisplay();
     addLogEntry('🔄 Sistem siap digunakan');
