@@ -312,6 +312,9 @@
         { topicCtrl: "coba/lampu4", name: "Lampu 4", state: false },
       ];
 
+      // Topik untuk menyebarkan jadwal global
+      const scheduleTopic = "coba/jadwal/global";
+      
       const grid = document.getElementById("deviceGrid");
       const logEl = document.getElementById("log");
       const currentOnTime = document.getElementById("current-on-time");
@@ -392,6 +395,13 @@
 
         jadwalGlobal = { on: onTime, off: offTime };
         updateScheduleDisplay();
+        
+        // Simpan jadwal ke localStorage
+        localStorage.setItem('jadwalGlobal', JSON.stringify(jadwalGlobal));
+        
+        // Kirim jadwal ke broker MQTT (dengan retain agar klien baru langsung mendapatkannya)
+        client.publish(scheduleTopic, JSON.stringify(jadwalGlobal), { retain: true });
+        
         addLogEntry(`✅ Jadwal disimpan: Hidup ${onTime}, Mati ${offTime}`);
       }
 
@@ -403,6 +413,13 @@
         devices.forEach((device) => {
           client.subscribe(device.topicCtrl);
         });
+        
+        // Subscribe ke topik jadwal global
+        client.subscribe(scheduleTopic);
+        addLogEntry(`🔔 Mendengarkan pembaruan jadwal di topik: ${scheduleTopic}`);
+        
+        // Minta jadwal terbaru (jika ada) dengan mengirim pesan kosong
+        client.publish(scheduleTopic + "/get", "");
       });
 
       client.on("error", (err) => {
@@ -411,17 +428,59 @@
 
       client.on("message", (topic, message) => {
         const payload = message.toString();
-        const index = devices.findIndex((d) => d.topicCtrl === topic);
-        if (index !== -1) {
-          const newState = payload === "1";
-          if (devices[index].state !== newState) {
-            devices[index].state = newState;
-            renderDevices();
-            addLogEntry(
-              `${devices[index].name} ${
-                newState ? "Dinyalakan" : "Dimatikan"
-              } (Sinkronisasi)`
-            );
+        
+        // Handle pesan untuk perangkat
+        if (devices.some(d => d.topicCtrl === topic)) {
+          const index = devices.findIndex((d) => d.topicCtrl === topic);
+          if (index !== -1) {
+            const newState = payload === "1";
+            if (devices[index].state !== newState) {
+              devices[index].state = newState;
+              renderDevices();
+              addLogEntry(
+                `${devices[index].name} ${
+                  newState ? "Dinyalakan" : "Dimatikan"
+                } (Sinkronisasi)`
+              );
+            }
+          }
+        }
+        
+        // Handle pesan untuk jadwal global
+        if (topic === scheduleTopic) {
+          try {
+            const newSchedule = JSON.parse(payload);
+            if (newSchedule.on && newSchedule.off) {
+              jadwalGlobal = newSchedule;
+              
+              // Update UI
+              document.getElementById("global-on-time").value = jadwalGlobal.on;
+              document.getElementById("global-off-time").value = jadwalGlobal.off;
+              updateScheduleDisplay();
+              
+              // Simpan ke localStorage
+              localStorage.setItem('jadwalGlobal', JSON.stringify(jadwalGlobal));
+              
+              addLogEntry("📅 Jadwal global diperbarui dari broker");
+            }
+          } catch (e) {
+            addLogEntry("❌ Error parsing jadwal dari broker");
+          }
+        }
+      });
+
+      // Cek jadwal di localStorage saat pertama kali load
+      window.addEventListener('load', function() {
+        const savedSchedule = localStorage.getItem('jadwalGlobal');
+        if (savedSchedule) {
+          try {
+            jadwalGlobal = JSON.parse(savedSchedule);
+            document.getElementById("global-on-time").value = jadwalGlobal.on;
+            document.getElementById("global-off-time").value = jadwalGlobal.off;
+            updateScheduleDisplay();
+            addLogEntry("📅 Jadwal dimuat dari penyimpanan lokal");
+          } catch (e) {
+            addLogEntry("❌ Gagal memuat jadwal dari penyimpanan lokal");
           }
         }
       });
