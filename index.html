@@ -376,7 +376,7 @@
       let manualOverride = false;
       let overrideTimeout = null;
 
-      function toggleDevice(index, stae, isManual = false) {
+      function toggleDevice(index, state, isManual = false) {
         if (isManual) {
           manualOverride = true;
           updateControlMode();
@@ -396,7 +396,7 @@
 
         if (isManual) {
           addLogEntry(
-            '🖐️ ${device.name} ${state ? "dinyalakan" : "dimatikan"} secara manual'
+            `🖐️ ${device.name} ${state ? "dinyalakan" : "dimatikan"} secara manual`
           );
         }
         // Tidak langsung set state atau render, biarkan pesan MQTT yang mengatur
