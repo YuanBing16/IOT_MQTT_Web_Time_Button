@@ -24,6 +24,7 @@
         --input-bg: white;
         --input-text: #333333;
         --input-border: #e1e4e8;
+        --device-text: #3a5a84; /* Warna teks khusus untuk perangkat */
       }
 
       * {
@@ -131,12 +132,13 @@
       .device-name {
         margin-bottom: 1rem;
         font-weight: 600;
-        color: var(--primary-dark);
+        color: var(--device-text);
         font-size: 1.05rem;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
+        transition: var(--transition);
       }
 
       .device-icon {
@@ -465,6 +467,7 @@
         --input-bg: #2d4059;
         --input-text: #ffffff;
         --input-border: #4a6fa5;
+        --device-text: #ffffff; /* Teks perangkat menjadi putih di mode gelap */
       }
 
       body.dark-mode .device-card,
@@ -875,12 +878,12 @@
 
       // Mode gelap
       const darkModeToggle = document.getElementById('darkModeToggle');
-      // Cek preferensi sistem atau localStorage untuk mode gelap
-      const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+      
+      // Default mode adalah terang, tidak perlu cek preferensi sistem
       const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-
-      // Terapkan mode gelap jika diperlukan
-      if (savedDarkMode || prefersDarkScheme.matches) {
+      
+      // Terapkan mode gelap hanya jika sebelumnya pengguna memilihnya
+      if (savedDarkMode) {
         enableDarkMode();
       }
 
@@ -934,6 +937,11 @@
           document.querySelectorAll('.loading').forEach(el => {
             el.classList.remove('loading');
           });
+          
+          // Inisialisasi tampilan
+          renderDevices();
+          updateScheduleDisplay();
+          addLogEntry("🔄 Sistem siap digunakan");
         }, 1500);
       });
 
@@ -953,11 +961,6 @@
           addLogEntry("⏰ Semua perangkat dimatikan sesuai jadwal");
         }
       }, 1000);
-
-      // Inisialisasi
-      renderDevices();
-      updateScheduleDisplay();
-      addLogEntry("🔄 Sistem siap digunakan");
     </script>
   </body>
 </html>
