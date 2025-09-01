@@ -21,6 +21,9 @@
         --shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
         --base-font-size: 16px;
         --transition: all 0.3s ease;
+        --input-bg: white;
+        --input-text: #333333;
+        --input-border: #e1e4e8;
       }
 
       * {
@@ -38,6 +41,7 @@
         color: var(--text);
         font-size: var(--base-font-size);
         line-height: 1.6;
+        transition: var(--transition);
       }
 
       .card {
@@ -190,6 +194,7 @@
 
       .log-container {
         margin-top: 2rem;
+        transition: var(--transition);
       }
 
       .log-header {
@@ -234,6 +239,7 @@
         font-size: 0.9rem;
         background: #fafafa;
         scroll-behavior: smooth;
+        transition: var(--transition);
       }
 
       #log::-webkit-scrollbar {
@@ -318,6 +324,7 @@
         padding: 0.8rem 1rem;
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        transition: var(--transition);
       }
 
       .time-input-group label {
@@ -332,10 +339,11 @@
       input[type="time"] {
         flex: 1;
         padding: 0.7rem 1rem;
-        border: 1px solid var(--border);
+        border: 1px solid var(--input-border);
         border-radius: 10px;
         font-size: 1rem;
-        background: white;
+        background: var(--input-bg);
+        color: var(--input-text);
         font-family: inherit;
         transition: var(--transition);
       }
@@ -365,6 +373,7 @@
       .schedule-item:hover {
         transform: translateY(-3px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        background: #f8f9ff;
       }
 
       .schedule-label {
@@ -422,7 +431,7 @@
         animation: pulse 0.5s ease;
       }
 
-      /* Mode gelap (opsional) */
+      /* Mode gelap */
       .dark-mode-toggle {
         position: absolute;
         top: 1rem;
@@ -439,10 +448,51 @@
         cursor: pointer;
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         transition: var(--transition);
+        z-index: 10;
       }
 
       .dark-mode-toggle:hover {
         transform: rotate(30deg);
+      }
+
+      /* Dark mode styles */
+      body.dark-mode {
+        --bg: #1a1a2e;
+        --card: #16213e;
+        --text: #ffffff;
+        --text-light: #b0b0b0;
+        --border: #2d4059;
+        --input-bg: #2d4059;
+        --input-text: #ffffff;
+        --input-border: #4a6fa5;
+      }
+
+      body.dark-mode .device-card,
+      body.dark-mode .schedule-card,
+      body.dark-mode .current-schedule,
+      body.dark-mode .time-input-group {
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      body.dark-mode .schedule-item {
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      body.dark-mode .schedule-item:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      body.dark-mode #log {
+        background: #1a1a2e;
+        border-color: #2d4059;
+      }
+
+      body.dark-mode .log-entry {
+        border-bottom-color: #2d4059;
+      }
+
+      body.dark-mode input[type="time"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
       }
 
       /* Media Queries untuk Responsivitas */
@@ -493,10 +543,6 @@
       }
 
       @media (max-width: 360px) {
-        /* .devices-grid {
-          grid-template-columns: 1fr;   //untuk membuat posisi button ketika size halaman berada pada < 360px maka button menjadi sejajar kebawah
-        } */
-        
         .toggle-btn {
           padding: 0.7rem 0.9rem;
           font-size: 0.85rem;
@@ -597,7 +643,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/mqtt@4.3.7/dist/mqtt.min.js"></script>
     <script>
-      // [Kode JavaScript tetap sama seperti sebelumnya]
       const broker = "wss://broker.hivemq.com:8884/mqtt";
       const client = mqtt.connect(broker, {
         clientId: "web_" + Math.random().toString(16).substr(2, 8),
@@ -704,7 +749,6 @@
         }
 
         const device = devices[index];
-        const newState = state !== undefined ? state : !device.state;
         client.publish(device.topicCtrl, state ? "1" : "0", { retain: true });
 
         if (isManual) {
@@ -712,7 +756,6 @@
             `🖐️ ${device.name} ${state ? "dinyalakan" : "dimatikan"} secara manual`
           );
         }
-        // Tidak langsung set state atau render, biarkan pesan MQTT yang mengatur
       }
 
       function updateControlMode() {
@@ -830,6 +873,43 @@
         }
       });
 
+      // Mode gelap
+      const darkModeToggle = document.getElementById('darkModeToggle');
+      // Cek preferensi sistem atau localStorage untuk mode gelap
+      const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+      const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+
+      // Terapkan mode gelap jika diperlukan
+      if (savedDarkMode || prefersDarkScheme.matches) {
+        enableDarkMode();
+      }
+
+      darkModeToggle.addEventListener('click', () => {
+        if (document.body.classList.contains('dark-mode')) {
+          disableDarkMode();
+        } else {
+          enableDarkMode();
+        }
+      });
+
+      function enableDarkMode() {
+        document.body.classList.add('dark-mode');
+        const icon = darkModeToggle.querySelector('i');
+        icon.className = 'fas fa-sun';
+        
+        localStorage.setItem('darkMode', 'true');
+        addLogEntry('🌙 Mode gelap diaktifkan');
+      }
+
+      function disableDarkMode() {
+        document.body.classList.remove('dark-mode');
+        const icon = darkModeToggle.querySelector('i');
+        icon.className = 'fas fa-moon';
+        
+        localStorage.setItem('darkMode', 'false');
+        addLogEntry('☀️ Mode terang diaktifkan');
+      }
+
       // Cek jadwal di localStorage saat pertama kali load
       window.addEventListener("load", function () {
         const savedSchedule = localStorage.getItem("jadwalGlobal");
@@ -873,31 +953,6 @@
           addLogEntry("⏰ Semua perangkat dimatikan sesuai jadwal");
         }
       }, 1000);
-
-      // Mode gelap
-      const darkModeToggle = document.getElementById('darkModeToggle');
-      darkModeToggle.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        const icon = darkModeToggle.querySelector('i');
-        
-        if (document.body.classList.contains('dark-mode')) {
-          icon.className = 'fas fa-sun';
-          document.documentElement.style.setProperty('--bg', '#1a1a2e');
-          document.documentElement.style.setProperty('--card', '#16213e');
-          document.documentElement.style.setProperty('--text', '#ffffff');
-          document.documentElement.style.setProperty('--text-light', '#b0b0b0');
-          document.documentElement.style.setProperty('--border', '#2d4059');
-          addLogEntry('🌙 Mode gelap diaktifkan');
-        } else {
-          icon.className = 'fas fa-moon';
-          document.documentElement.style.setProperty('--bg', '#f8f9fa');
-          document.documentElement.style.setProperty('--card', '#ffffff');
-          document.documentElement.style.setProperty('--text', '#333333');
-          document.documentElement.style.setProperty('--text-light', '#777777');
-          document.documentElement.style.setProperty('--border', '#e1e4e8');
-          addLogEntry('☀️ Mode terang diaktifkan');
-        }
-      });
 
       // Inisialisasi
       renderDevices();
